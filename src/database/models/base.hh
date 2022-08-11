@@ -4,8 +4,8 @@
 #include <bsoncxx/builder/stream/document.hpp>
 #include <bsoncxx/builder/stream/helpers.hpp>
 
-class Base {
+class DbModel {
   public:
 	virtual bsoncxx::document::value to_document() = 0;
-	virtual ~Base() = default;
+	virtual ~DbModel() = default;
 };

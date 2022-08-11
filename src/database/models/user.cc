@@ -1,6 +1,6 @@
 #include "base.hh"
 
-class User : public Base {
+class User : public DbModel {
   public:
 	double cash;
 	User(bsoncxx::document::value doc) : cash{doc.view()["cash"].get_double()} {}
