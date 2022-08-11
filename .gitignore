@@ -1,4 +1,21 @@
-/build
+# Non-example config file that contains sensitive info.
 /src/config.cc
+
+# Compiler output
+build/
+*.out
+*.exe
+*.o
+*.so
+*.a
+*.lib
+*.dll
+
+# Qt Creator config files & build dirs
+*.user
+*-build/
+
+# Clangd stuff
 .clangd
+compile_commands.json
 compile_flags.txt

@@ -16,7 +16,7 @@ enum class quotation
 	single_quoted
 };
 
-std::string parse_single_argument(std::string &content)
+inline std::string parse_single_argument(std::string &content)
 {
 	std::string output;
 
@@ -140,12 +140,14 @@ template <typename T> Argument(T &&, std::string) -> Argument<std::invoke_result
 template <typename... CommandContextTypes> class CommandHandler
 {
 public:
-	struct CommandInterface;
+	class CommandInterface;
 	std::unordered_map<std::string, std::shared_ptr<CommandInterface>> m_commands;
 	void handle_command(CommandContextTypes... context, std::string command) const
 	{
 		std::string command_name = patron::parser::parse_single_argument(command);
+#ifndef NDEBUG
 		std::cout << "Running command... \"" << command_name << "\"\n";
+#endif
 		if (m_commands.contains(command_name))
 		{
 			m_commands.at(command_name)->run(context..., command);
@@ -156,7 +158,9 @@ public:
 	{
 		for (std::string name : cmd->aliases())
 		{
+#ifndef NDEBUG
 			std::cout << "Adding alias: " << name << "\n";
+#endif
 			if (!m_commands.contains(name))
 			{
 				m_commands[name] = cmd;
@@ -172,36 +176,51 @@ public:
 		register_command(std::shared_ptr<CommandInterface>{new Command{a1, args...}});
 	}
 
-	struct CommandInterface
+	struct CommandOptions {
+	};
+
+	class CommandInterface
 	{
 	public:
 		virtual void run(std::string args) const = 0;
 		virtual std::span<const std::string> aliases() const = 0;
+		virtual std::string_view desc() const = 0;
+		virtual std::string_view category() const = 0;
+		virtual const CommandOptions &opts() const = 0;
 		virtual ~CommandInterface() = default;
 	};
 
-	template <typename... T> struct Command;
+	template <typename... T> class Command;
 
-	template <typename... ArgReaders> struct Command<std::tuple<ArgReaders...>> : public CommandInterface
+	template <typename... ArgReaders> class Command<std::tuple<ArgReaders...>> : public CommandInterface
 	{
+	public:
+		using run_fn_type =
+		    std::function<void(CommandContextTypes..., typename Argument<ArgReaders>::result_type...)>;
+		using args_type = std::tuple<typename Argument<ArgReaders>::result_type...>;
+		using arginfo_type = std::tuple<Argument<ArgReaders>...>;
+
 		std::vector<std::string> m_aliases;
+		std::string m_desc;
+		std::string m_category;
+		CommandOptions m_opts;
+
+		arginfo_type m_arginfo;
+		run_fn_type m_run_fn;
+
 		std::span<const std::string, std::dynamic_extent> aliases() const override
 		{
 			return m_aliases;
 		}
-
-		using exec_func_type =
-		    std::function<void(CommandContextTypes..., typename Argument<ArgReaders>::result_type...)>;
-		using arg_tuple_type = std::tuple<typename Argument<ArgReaders>::result_type...>;
-		using arginfo_tuple_type = std::tuple<Argument<ArgReaders>...>;
-
-		arginfo_tuple_type m_arginfo;
-		exec_func_type m_exec_func;
+		
+		std::string_view desc() const override { return m_desc; }
+		std::string_view category() const override { return m_category; }
+		const CommandOptions & opts() const override {return m_opts;}
 
 		template <std::size_t... Indexes>
-		arg_tuple_type parse_args(std::string &args, std::integer_sequence<std::size_t, Indexes...>) const
+		args_type parse_args(std::string &args, std::integer_sequence<std::size_t, Indexes...>) const
 		{
-			return arg_tuple_type{typename std::remove_reference_t<decltype(std::get<Indexes>(m_arginfo))>::reader{}(
+			return args_type{typename std::remove_reference_t<decltype(std::get<Indexes>(m_arginfo))>::reader{}(
 			    patron::parser::parse_single_argument(args))...};
 		}
 
@@ -214,46 +233,32 @@ public:
 
 		void run(CommandContextTypes... extra_args, std::string content) const override
 		{
-			arg_tuple_type res =
+			args_type res =
 			    parse_args(content, std::make_index_sequence<std::tuple_size_v<decltype(m_arginfo)>>{});
 			if (!patron::parser::parse_single_argument(content).empty())
 			{
 				// TODO: handle the situation where too many or few arguments were passed
 			}
-			std::apply(m_exec_func, std::tuple_cat(std::make_tuple(extra_args...), res));
+			std::apply(m_run_fn, std::tuple_cat(std::make_tuple(extra_args...), res));
 		}
 
-		Command(std::string name, arginfo_tuple_type args, exec_func_type f) : Command({name}, args, f)
+		Command(std::string name, auto &&... args) : Command(std::initializer_list<std::string>{name}, args...)
 		{
 		}
-		Command(std::initializer_list<std::string> aliases, arginfo_tuple_type args, exec_func_type f)
-		    : m_aliases{aliases}, m_arginfo{args}, m_exec_func{f}
+		Command(std::initializer_list<std::string> aliases, std::string desc, std::string category, CommandOptions opts, arginfo_type args, run_fn_type f)
+		    : m_aliases{aliases}, m_desc{desc}, m_category{category}, m_arginfo{args}, m_run_fn{f}
 		{
 		}
 	};
 
-	template <typename... ArgTypes>
-	Command(auto &&, std::tuple<Argument<ArgTypes>...>, auto &&) -> Command<std::tuple<ArgTypes...>>;
+#define common_opts auto &&, auto &&, CommandOptions, std::tuple<Argument<ArgTypes>...>, auto &&
 
 	template <typename... ArgTypes>
-	Command(std::initializer_list<std::string>, std::tuple<Argument<ArgTypes>...>, auto &&)
+	Command(auto &&, common_opts) -> Command<std::tuple<ArgTypes...>>;
+
+	template <typename... ArgTypes>
+	Command(std::initializer_list<std::string>, common_opts)
 	    -> Command<std::tuple<ArgTypes...>>;
 };
 } // namespace patron::cmds
 
-int main()
-{
-	using namespace patron::cmds;
-	namespace r = patron::cmds::readers;
-	CommandHandler<> handler;
-
-	handler.register_command({"cmd", "cmd_alias"},
-	                         std::tuple{Argument<r::Double>{"the number"}, Argument<r::String>{"the string"}},
-	                         [](double arg1, std::string arg2) {
-		                         std::cout << arg1 << "\n";
-		                         std::cout << arg2 << "\n";
-	                         });
-
-	handler.handle_command(R"(cmd "1.5" "this is using the main cmd name")");
-	handler.handle_command(R"(cmd_alias "1.7" "this is using the alias")");
-}
