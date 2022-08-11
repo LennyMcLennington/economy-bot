@@ -6,7 +6,8 @@ int main()
 	namespace r = patron::cmds::readers;
 	CommandHandler<> handler;
 
-	handler.register_command({"cmd", "cmd_alias"}, "The description of the command", "general", CommandHandler<>::CommandOptions{},
+	handler.register_command({"cmd", "cmd_alias"}, "The description of the command", "general",
+	                         CommandHandler<>::CommandOptions{},
 	                         std::tuple{Argument<r::Double>{"the number"}, Argument<r::String>{"the string"}},
 	                         [](double arg1, std::string arg2) {
 		                         std::cout << arg1 << "\n";

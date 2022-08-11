@@ -9,12 +9,15 @@
 
 namespace patron::parser
 {
+namespace
+{
 enum class quotation
 {
 	not_quoted,
 	double_quoted,
 	single_quoted
 };
+} // namespace
 
 inline std::string parse_single_argument(std::string &content)
 {
@@ -176,7 +179,8 @@ public:
 		register_command(std::shared_ptr<CommandInterface>{new Command{a1, args...}});
 	}
 
-	struct CommandOptions {
+	struct CommandOptions
+	{
 	};
 
 	class CommandInterface
@@ -195,8 +199,7 @@ public:
 	template <typename... ArgReaders> class Command<std::tuple<ArgReaders...>> : public CommandInterface
 	{
 	public:
-		using run_fn_type =
-		    std::function<void(CommandContextTypes..., typename Argument<ArgReaders>::result_type...)>;
+		using run_fn_type = std::function<void(CommandContextTypes..., typename Argument<ArgReaders>::result_type...)>;
 		using args_type = std::tuple<typename Argument<ArgReaders>::result_type...>;
 		using arginfo_type = std::tuple<Argument<ArgReaders>...>;
 
@@ -212,10 +215,19 @@ public:
 		{
 			return m_aliases;
 		}
-		
-		std::string_view desc() const override { return m_desc; }
-		std::string_view category() const override { return m_category; }
-		const CommandOptions & opts() const override {return m_opts;}
+
+		std::string_view desc() const override
+		{
+			return m_desc;
+		}
+		std::string_view category() const override
+		{
+			return m_category;
+		}
+		const CommandOptions &opts() const override
+		{
+			return m_opts;
+		}
 
 		template <std::size_t... Indexes>
 		args_type parse_args(std::string &args, std::integer_sequence<std::size_t, Indexes...>) const
@@ -233,8 +245,7 @@ public:
 
 		void run(CommandContextTypes... extra_args, std::string content) const override
 		{
-			args_type res =
-			    parse_args(content, std::make_index_sequence<std::tuple_size_v<decltype(m_arginfo)>>{});
+			args_type res = parse_args(content, std::make_index_sequence<std::tuple_size_v<decltype(m_arginfo)>>{});
 			if (!patron::parser::parse_single_argument(content).empty())
 			{
 				// TODO: handle the situation where too many or few arguments were passed
@@ -242,10 +253,11 @@ public:
 			std::apply(m_run_fn, std::tuple_cat(std::make_tuple(extra_args...), res));
 		}
 
-		Command(std::string name, auto &&... args) : Command(std::initializer_list<std::string>{name}, args...)
+		Command(std::string name, auto &&...args) : Command(std::initializer_list<std::string>{name}, args...)
 		{
 		}
-		Command(std::initializer_list<std::string> aliases, std::string desc, std::string category, CommandOptions opts, arginfo_type args, run_fn_type f)
+		Command(std::initializer_list<std::string> aliases, std::string desc, std::string category, CommandOptions opts,
+		        arginfo_type args, run_fn_type f)
 		    : m_aliases{aliases}, m_desc{desc}, m_category{category}, m_arginfo{args}, m_run_fn{f}
 		{
 		}
@@ -253,12 +265,9 @@ public:
 
 #define common_opts auto &&, auto &&, CommandOptions, std::tuple<Argument<ArgTypes>...>, auto &&
 
-	template <typename... ArgTypes>
-	Command(auto &&, common_opts) -> Command<std::tuple<ArgTypes...>>;
+	template <typename... ArgTypes> Command(auto &&, common_opts) -> Command<std::tuple<ArgTypes...>>;
 
 	template <typename... ArgTypes>
-	Command(std::initializer_list<std::string>, common_opts)
-	    -> Command<std::tuple<ArgTypes...>>;
+	Command(std::initializer_list<std::string>, common_opts) -> Command<std::tuple<ArgTypes...>>;
 };
 } // namespace patron::cmds
-
