@@ -1,0 +1,8 @@
+[requires]
+fmt/9.1.0
+mongo-cxx-driver/3.6.7
+dpp/10.0.21
+openssl/3.0.7
+
+[generators]
+pkg_config

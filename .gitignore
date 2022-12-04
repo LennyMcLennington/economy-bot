@@ -19,3 +19,6 @@ build/
 .clangd
 compile_commands.json
 compile_flags.txt
+
+# Conan stuff
+/conan_deps

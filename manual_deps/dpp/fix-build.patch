@@ -1,0 +1,74 @@
+diff --git a/library/CMakeLists.txt b/library/CMakeLists.txt
+index 90cb6b69..51c9096a 100644
+--- a/library/CMakeLists.txt
++++ b/library/CMakeLists.txt
+@@ -38,14 +38,13 @@ if(WIN32 AND NOT MINGW)
+ 		link_libraries("${CMAKE_CURRENT_SOURCE_DIR}/../win32/lib/libsodium.lib")
+ 		link_libraries("${CMAKE_CURRENT_SOURCE_DIR}/../win32/lib/opus.lib")
+ 
+-		set(OPUS_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../win32/include")
+-		set(OPUS_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/../win32/lib/opus.lib")
+-		set(sodium_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../win32/include")
+-		set(sodium_LIBRARY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/../win32/lib/libsodium.lib")
+-		set(sodium_LIBRARY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/../win32/lib/libsodium.lib")
++		set(Opus_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../win32/include")
++		set(Opus_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/../win32/lib/opus.lib")
++		set(libsodium_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../win32/include")
++		set(libsodium_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/../win32/lib/libsodium.lib")
+ 		set(HAVE_OPUS_OPUS_H "${CMAKE_CURRENT_SOURCE_DIR}/../win32/include/opus/opus.h")
+ 		set(OPUS_FOUND 1)
+-		SET(sodium_VERSION_STRING "win32 bundled")
++		SET(libsodium_VERSION "win32 bundled")
+ 
+ 		include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../win32/include")
+ 
+@@ -88,8 +87,8 @@ if(NOT BUILD_SHARED_LIBS)
+ 		endif()
+ 		
+ 		set(OPENSSL_USE_STATIC_LIBS ON)
+-		set(sodium_USE_STATIC_LIBS ON)
+-		set(OPUS_USE_STATIC_LIBS TRUE)
++		set(libsodium_USE_STATIC_LIBS ON)
++		set(Opus_USE_STATIC_LIBS ON)
+ 	else()
+ 		message(WARNING "-- Building of static library not supported on non UNIX systems.")
+ 	endif()
+@@ -99,18 +98,16 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/colour.cmake")
+ 
+ if (BUILD_VOICE_SUPPORT)
+ 	if (MINGW OR NOT WIN32)
+-		include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/FindSodium.cmake")
+-		include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/FindOpus.cmake")
++		find_package(libsodium)
++		find_package(Opus)
+ 	endif()
+ 
+-	if(DEFINED OPUS_FOUND)
+-		if(DEFINED sodium_VERSION_STRING)
+-			add_compile_definitions(HAVE_VOICE)
+-		
+-			message("-- Sodium ${Green}${sodium_VERSION_STRING}${ColourReset}")
+-		
+-			set(HAVE_VOICE 1)
+-		endif()
++	if(DEFINED Opus_FOUND AND DEFINED libsodium_FOUND)
++		add_compile_definitions(HAVE_VOICE)
++
++		message("-- Sodium ${Green}${libsodium_VERSION}${ColourReset}")
++
++		set(HAVE_VOICE 1)
+ 	endif()
+ 
+ 	if(HAVE_VOICE)
+@@ -240,9 +237,9 @@ foreach (fullmodname ${subdirlist})
+ 	endif()
+ 
+ 	if (HAVE_VOICE)
+-		target_link_libraries(${modname} PUBLIC ${sodium_LIBRARY_RELEASE} ${OPUS_LIBRARIES})
++		target_link_libraries(${modname} PUBLIC ${libsodium_LIBRARIES} ${Opus_LIBRARIES})
+ 		
+-		include_directories(${OPUS_INCLUDE_DIRS} ${sodium_INCLUDE_DIR})
++		include_directories(${Opus_INCLUDE_DIRS} ${libsodium_INCLUDE_DIRS})
+ 	endif()
+ endforeach()
+ 
