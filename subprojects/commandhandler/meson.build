@@ -1,4 +1,4 @@
-project('command-handler', 'cpp', license: 'GPL-3.0', default_options : ['cpp_std=c++20'])
+project('command-handler', 'cpp', license: 'GPL-3.0-only', default_options : ['cpp_std=c++20'])
 fs = import('fs')
 
 include_dir = include_directories('include')
